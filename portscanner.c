@@ -74,6 +74,55 @@ unsigned short csum(unsigned short *ptr,int nbytes)
     return(answer);
 }
 
+void * receive_ack( void *ptr ) {
+    struct sockaddr_in* servaddr = (struct sockaddr_in*)ptr;
+    struct iphdr *iph_r;
+    struct tcphdr *tcph_r;
+
+    struct sockaddr saddr; 
+    struct sockaddr_in source;
+
+    unsigned char* buffer = (unsigned char*)malloc(65536);
+    int data_size, saddr_size = sizeof(saddr);
+    int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+
+    if (sock_raw < 0) {
+        printf("socket creation failed, %s\n", strerror(errno));
+        goto FREE_MALLOC;
+    }
+
+    while(1) {
+        data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
+
+        if(data_size < 0 )
+        {
+            printf("Recvfrom error , failed to get packets\n");
+            break;
+        }
+
+        iph_r = (struct iphdr*)buffer;
+
+        if (iph_r->protocol == IPPROTO_TCP) {
+            struct tcphdr *tcph_r=(struct tcphdr*)(buffer + iph_r->ihl * 4);
+
+            memset(&source, 0, sizeof(source));
+            source.sin_addr.s_addr = iph_r->saddr;
+
+            if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
+            {
+                printf("Port %d open \n" , ntohs(tcph_r->source));
+                fflush(stdout);
+            }
+        }
+    }
+
+
+
+    close(sock_raw);
+FREE_MALLOC:
+    free(buffer);
+}
+
 int syn_ack_scan(struct sockaddr_in* servaddr) {
     int source_port = 43591;
     char source_ip[20];
@@ -81,6 +130,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     struct iphdr *iph = (struct iphdr *) datagram;
     struct tcphdr *tcph = (struct tcphdr *) (datagram + sizeof (struct ip));
     struct pseudo_header psh;
+    pthread_t receiver_thread;
 
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sockfd == -1) { 
@@ -96,8 +146,8 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
         iph->ihl = 5;
         iph->version = 4;
         iph->tos = 0;
-        iph->tot_len = sizeof (struct ip) + sizeof (struct tcphdr);
-        iph->id = htons (54321);
+        iph->tot_len = 0;
+        iph->id = 0;
         iph->frag_off = htons(16384);
         iph->ttl = 64;
         iph->protocol = IPPROTO_TCP;
@@ -133,6 +183,13 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
         }
     }
 
+    {
+        if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)servaddr) < 0) {
+            printf("Fatal can't create reciever thread, %s\n", strerror(errno));
+            exit(1);
+        }
+    }
+
     for(int i = 0;i < 65536; ++i) {
         tcph->dest = htons(i);
         tcph->check = 0;
@@ -152,52 +209,12 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
             printf("error sending syn packet, %s \n",  strerror(errno));
             continue;
         }
-
-        struct iphdr *iph_r;
-        struct tcphdr *tcph_r;
-
-        struct sockaddr saddr; 
-        struct sockaddr_in source;
-        unsigned char* buffer = (unsigned char*)malloc(65536);
-        int data_sie, saddr_size = sizeof(saddr);
-        int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-
-        if (sock_raw < 0) {
-            printf("socket creation failed, %s\n", strerror(errno));
-            goto FREE_MALLOC;
-        }
-        int data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-
-        if(data_size <0 )
-        {
-            printf("Recvfrom error , failed to get packets\n");
-            goto CLOSE_SOCKET;
-        }
-
-        iph_r = (struct iphdr*)buffer;
-
-        if (iph_r->protocol == IPPROTO_TCP) {
-            struct tcphdr *tcph_r=(struct tcphdr*)(buffer + iph_r->ihl * 4);
-
-            memset(&source, 0, sizeof(source));
-            source.sin_addr.s_addr = iph_r->saddr;
-
-            if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
-            {
-                printf("Port %d open \n" , ntohs(tcph->source));
-                fflush(stdout);
-            }
-        }
-
-
-
-CLOSE_SOCKET:
-        close(sock_raw);
-FREE_MALLOC:
-        free(buffer);
     }
 
     close(sockfd);
+
+
+    pthread_join(receiver_thread , NULL);
 
     return 1;
 }
@@ -274,17 +291,17 @@ int main(int argv, char** args) {
 
     syn_ack_scan(&servaddr);
 
-    /*for(int i = 1; i < 65536; ++i) {*/
-        /*servaddr.sin_port   = htons(i);*/
+    /*for(int i = 1; i < 65536; ++i) {
+      servaddr.sin_port   = htons(i);
 
-        /*[>if (is_tcp_port_open(&servaddr)) {<]*/
-        /*[>printf("Port %d is open\n", i);<]*/
-        /*[>}<]*/
+      if (is_tcp_port_open(&servaddr)) {
+      printf("Port %d is open\n", i);
+      }
 
-        /*if(is_udp_port_open(&servaddr))  {*/
-            /*printf("Port %d is open\n", i);*/
-        /*}*/
-    /*}*/
+      if(is_udp_port_open(&servaddr))  {
+      printf("Port %d is open\n", i);
+      }
+      }*/
 
     return 0;
 }
