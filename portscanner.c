@@ -10,6 +10,13 @@
 #include <netinet/ip.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "utils.h"
+
+struct syn_ack_args
+{
+    struct sockaddr_in* addr;
+    int sd;
+};
 
 struct pseudo_header
 {
@@ -75,7 +82,10 @@ unsigned short csum(unsigned short *ptr,int nbytes)
 }
 
 void * receive_ack( void *ptr ) {
-    struct sockaddr_in* servaddr = (struct sockaddr_in*)ptr;
+    struct syn_ack_args* args = (struct syn_ack_args*) ptr;
+
+    struct sockaddr_in* servaddr = args->addr;
+    char* bu = malloc(1000);
     struct iphdr *iph_r;
     struct tcphdr *tcph_r;
 
@@ -84,16 +94,16 @@ void * receive_ack( void *ptr ) {
 
     unsigned char* buffer = (unsigned char*)malloc(65536);
     int data_size, saddr_size = sizeof(saddr);
-    int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+    int sock_raw = args->sd;
 
     if (sock_raw < 0) {
         printf("socket creation failed, %s\n", strerror(errno));
         goto FREE_MALLOC;
     }
 
-    while(1) {
+    while(!intterupter.done) {
         data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-
+        if( intterupter.done ) break;
         if(data_size < 0 )
         {
             printf("Recvfrom error , failed to get packets\n");
@@ -130,7 +140,8 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     struct iphdr *iph = (struct iphdr *) datagram;
     struct tcphdr *tcph = (struct tcphdr *) (datagram + sizeof (struct ip));
     struct pseudo_header psh;
-    pthread_t receiver_thread;
+    pthread_t receiver_thread,int_thread;
+    struct  syn_ack_args args;
 
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sockfd == -1) { 
@@ -184,10 +195,19 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     }
 
     {
-        if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)servaddr) < 0) {
+        args.addr =  servaddr;
+        int sd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+        args.sd = sd;
+        initInt(&intterupter,sd,5);
+        if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
             printf("Fatal can't create reciever thread, %s\n", strerror(errno));
             exit(1);
         }
+        if( pthread_create(&int_thread, NULL, intterupter.stopListening,(void*)&intterupter) < 0 ){
+            printf("Fatal can't create intterupting thread, %s\n", strerror(errno));
+            exit(1);
+        }
+        pthread_detach(int_thread);
     }
 
     for(int i = 0;i < 65536; ++i) {
