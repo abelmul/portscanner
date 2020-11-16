@@ -33,8 +33,6 @@ int main(int argc, char** args) {
     }
 
     tcp_cnct_scan(&servaddr);
-    // syn_ack_scan(&servaddr);
-    // fin_scan(&servaddr);
     return 0;
 }
 
