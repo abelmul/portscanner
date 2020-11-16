@@ -8,6 +8,11 @@
 #include <netinet/ip.h>
 #include <sys/types.h>
 
+
+#define RED "\033[38;2;200;100;100m "
+#define GREEN "\033[38;2;100;200;100m "
+#define RST "\033[39m\\033[39m"
+
 typedef struct iphdr iphdr_t;
 typedef struct tcphdr tcphdr_t;
 typedef struct sockaddr_in sockaddr_in_t;
@@ -62,6 +67,15 @@ void set_tcphdr(tcphdr_t* tcph,u_int16_t source_port){
     tcph->window = htons ( 14600 );
     tcph->check = 0;
     tcph->urg_ptr = 0;
+}
+
+void print_err(char* msg){
+    printf(RED"[Error] %s%s%s", msg,RST,"\n");
+    fflush(stdout);
+}
+void print_status(int port,char* status){
+    printf(GREEN"\t%10d%5s%s%s", port, msg,RST,"\n");
+    fflush(stdout);
 }
 Interrupter intterupter;
 #endif

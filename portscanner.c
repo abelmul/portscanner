@@ -90,7 +90,7 @@ void * receive_ack( void *ptr ) {
     int sock_raw = args->sd;
 
     if (sock_raw < 0) {
-        printf("socket creation failed, %s\n", strerror(errno));
+        print_err("socket creation failed. " + strerror(errno));
         goto FREE_MALLOC;
     }
 
@@ -99,7 +99,7 @@ void * receive_ack( void *ptr ) {
         if( intterupter.done ) break;
         if(data_size < 0 )
         {
-            printf("Recvfrom error , failed to get packets\n");
+            print_err("Recvfrom error , failed to get packets.");
             break;
         }
 
@@ -113,7 +113,7 @@ void * receive_ack( void *ptr ) {
 
             if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
             {
-                printf("Port %d open \n" , ntohs(tcph_r->source));
+                print_status(ntohs(tcph_r->source),"open");
             }
         }
     }
@@ -138,7 +138,7 @@ void* receive_rst(void* ptr) {
     int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
     if (sock_raw < 0) {
-        printf("socket creation failed, %s\n", strerror(errno));
+        print_err("socket creation failed" + strerror(errno));
         goto FREE_MALLOC;
     }
 
@@ -163,8 +163,7 @@ void* receive_rst(void* ptr) {
 
             if(tcph_r->fin == 1 && !(tcph_r->rst == 1) && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
             {
-                printf("Port %d open \n" , ntohs(tcph_r->source));
-                fflush(stdout);
+                print_status(ntohs(tcph_r->source),"open");
             }
         }
     }
@@ -186,7 +185,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
 
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sockfd == -1) {
-        printf("tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
         return 0;
     }
 
@@ -205,7 +204,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
 
         if (setsockopt (sockfd, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
         {
-            printf ("Fatal error setting IP_HDRINCL,%s \n", strerror(errno));
+            print_err("Fatal error setting IP_HDRINCL " + strerror(errno));
             exit(1);
         }
     }
@@ -216,11 +215,11 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
         args.sd = sd;
         initInt(&intterupter,sd,5);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
-            printf("Fatal can't create reciever thread, %s\n", strerror(errno));
+            print_err("Fatal can't create reciever thread" + strerror(errno));
             exit(1);
         }
         if( pthread_create(&int_thread, NULL, intterupter.stopListening,(void*)&intterupter) < 0 ){
-            printf("Fatal can't create intterupting thread, %s\n", strerror(errno));
+            print_err("Fatal can't create intterupting thread " + strerror(errno));
             exit(1);
         }
         pthread_detach(int_thread);
@@ -242,7 +241,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
 
         if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
         {
-            printf("error sending syn packet, %s \n",  strerror(errno));
+            print_err("error sending syn packet " + strerror(errno));
             continue;
         }
     }
@@ -267,7 +266,7 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (sockfd == -1) {
-        printf("tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
         return 0;
     }
 
@@ -280,21 +279,21 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
     //Set the miscellaneous tcp header fields
     set_tcphdr(tcph, source_port);
-    
+
     {
         int one = 1;
         const int *val = &one;
 
         if (setsockopt (sockfd, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
         {
-            printf ("Fatal error setting IP_HDRINCL,%s \n", strerror(errno));
+            print_err("Fatal error setting IP_HDRINCL, " + strerror(errno));
             exit(1);
         }
     }
 
     {
         if(pthread_create(&receiver_thread, NULL, receive_rst, (void*)servaddr) < 0) {
-            printf("Fatal can't create reciever thread, %s\n", strerror(errno));
+            print_err("Fatal can't create reciever thread, " + strerror(errno));
         }
     }
 
@@ -314,7 +313,7 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
         if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
         {
-            printf("error sending syn packet, %s \n",  strerror(errno));
+            print_err("error sending syn packet " + strerror(errno));
             continue;
         }
     }
@@ -331,7 +330,7 @@ int is_tcp_port_open(struct sockaddr_in* servaddr) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd == -1) {
-        printf("tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        print(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
         return 0;
     }
 
@@ -356,7 +355,7 @@ int is_udp_port_open(struct sockaddr_in* servaddr) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     if (sockfd == -1) {
-        printf("udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        printf(RED"[Error] udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
         return 0;
     }
 
@@ -374,8 +373,8 @@ int main(int argv, char** args) {
     struct addrinfo hints, *res;
 
     if (argv < 2) {
-        printf("Please pass the ip to be port scanned\n");
-        return 1;
+        printf("Usage:\n%s [target_ip]", argv[0]);
+        return -1;
     }
 
     memset(&servaddr, 0, sizeof(servaddr));
@@ -393,7 +392,7 @@ int main(int argv, char** args) {
         servaddr = *(struct sockaddr_in*)res->ai_addr;
     }
     else {
-        printf("Provided ip or hostname is invalid\n");
+        print_err("Provided ip or hostname is invalid.");
         return 1;
     }
 
