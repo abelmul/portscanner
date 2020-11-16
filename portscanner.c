@@ -1,15 +1,10 @@
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
-#include <netinet/ip.h>
-#include <unistd.h>
-#include <pthread.h>
 #include "utils.h"
 
 struct syn_ack_args
@@ -198,36 +193,11 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     get_local_ip(source_ip);
 
     memset(datagram, 0, 4096);
+    //Set the miscellaneous ip header fields.
+    set_iphdr(iph,&source_ip,servaddr);
 
-    {
-        iph->ihl = 5;
-        iph->version = 4;
-        iph->tos = 0;
-        iph->tot_len = 0;
-        iph->id = 0;
-        iph->frag_off = htons(16384);
-        iph->ttl = 64;
-        iph->protocol = IPPROTO_TCP;
-        iph->check = 0;
-        iph->saddr = inet_addr (source_ip);
-        iph->daddr = servaddr->sin_addr.s_addr;
-    }
-
-    {
-        tcph->source = htons (source_port);
-        tcph->seq = htonl(1105024978);
-        tcph->ack_seq = 0;
-        tcph->doff = sizeof(struct tcphdr) / 4;		//Size of tcp header
-        tcph->fin=0;
-        tcph->syn=1;
-        tcph->rst=0;
-        tcph->psh=0;
-        tcph->ack=0;
-        tcph->urg=0;
-        tcph->window = htons ( 14600 );
-        tcph->check = 0;
-        tcph->urg_ptr = 0;
-    }
+    //Set the miscellaneous tcp header fields
+    set_tcphdr(tcph, source_port);
 
     {
         int one = 1;
@@ -305,36 +275,12 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
     memset(datagram, 0, 4096);
 
-    {
-        iph->ihl = 5;
-        iph->version = 4;
-        iph->tos = 0;
-        iph->tot_len = 0;
-        iph->id = 0;
-        iph->frag_off = htons(16384);
-        iph->ttl = 64;
-        iph->protocol = IPPROTO_TCP;
-        iph->check = 0;
-        iph->saddr = inet_addr (source_ip);
-        iph->daddr = servaddr->sin_addr.s_addr;
-    }
+    //Set the miscellaneous ip header fields.
+    set_iphdr(iph,&source_ip,servaddr);
 
-    {
-        tcph->source = htons (source_port);
-        tcph->seq = htonl(1105024978);
-        tcph->ack_seq = 0;
-        tcph->doff = sizeof(struct tcphdr) / 4;		//Size of tcp header
-        tcph->fin=1;
-        tcph->syn=0;
-        tcph->rst=0;
-        tcph->psh=0;
-        tcph->ack=0;
-        tcph->urg=0;
-        tcph->window = htons ( 14600 );
-        tcph->check = 0;
-        tcph->urg_ptr = 0;
-    }
-
+    //Set the miscellaneous tcp header fields
+    set_tcphdr(tcph, source_port);
+    
     {
         int one = 1;
         const int *val = &one;
