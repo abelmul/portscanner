@@ -52,13 +52,13 @@ void set_iphdr(iphdr_t* iph,char (*source_ip)[20],sockaddr_in_t* servaddr){
     iph->daddr = servaddr->sin_addr.s_addr;
 }
 
-void set_tcphdr(tcphdr_t* tcph,u_int16_t source_port){
+void set_tcphdr(tcphdr_t* tcph,u_int16_t source_port,uint8_t syn){
     tcph->source = htons (source_port);
     tcph->seq = htonl(1105024978);
     tcph->ack_seq = 0;
     tcph->doff = sizeof(struct tcphdr) / 4;		//Size of tcp header
-    tcph->fin=0;
-    tcph->syn=1;
+    tcph->fin=1-syn;
+    tcph->syn=syn;
     tcph->rst=0;
     tcph->psh=0;
     tcph->ack=0;

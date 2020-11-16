@@ -196,7 +196,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     set_iphdr(iph,&source_ip,servaddr);
 
     //Set the miscellaneous tcp header fields
-    set_tcphdr(tcph, source_port);
+    set_tcphdr(tcph, source_port,1);
 
     {
         int one = 1;
@@ -278,7 +278,7 @@ int fin_scan(struct sockaddr_in* servaddr) {
     set_iphdr(iph,&source_ip,servaddr);
 
     //Set the miscellaneous tcp header fields
-    set_tcphdr(tcph, source_port);
+    set_tcphdr(tcph, source_port,0);
 
     {
         int one = 1;
