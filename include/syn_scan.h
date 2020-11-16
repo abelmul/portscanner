@@ -11,6 +11,8 @@ void * receive_ack( void *ptr );
 
 void syn_ack_scan(struct sockaddr_in* servaddr) {
     print_msg("Doing a SYN scan.");
+    
+    Interrupter intterupter;
     int source_port = 43591;
     char source_ip[20];
     char datagram[4096];

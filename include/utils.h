@@ -199,6 +199,4 @@ enum scan_type get_type(char* opt){
         exit(-1);
     }
 }
-
-Interrupter intterupter;
 #endif
