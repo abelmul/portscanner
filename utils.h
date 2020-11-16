@@ -11,7 +11,7 @@
 
 #define RED "\033[38;2;200;100;100m "
 #define GREEN "\033[38;2;100;200;100m "
-#define RST "\033[39m\\033[39m"
+#define RST "\033[0m"
 
 typedef struct iphdr iphdr_t;
 typedef struct tcphdr tcphdr_t;
@@ -27,7 +27,6 @@ typedef struct
 void* stopListening(void* p){
     Interrupter* self = (Interrupter*)p;
     sleep(self->period);
-    printf("Done scanning, Exiting...\n");
     self->done = 1;
     shutdown(self->sd,SHUT_RDWR);
 }
@@ -73,8 +72,19 @@ void print_err(char* msg){
     printf(RED"[Error] %s%s%s", msg,RST,"\n");
     fflush(stdout);
 }
+void print_err2(char* msg1,char* msg2){
+    printf(RED"[Error] %s%s%s%s", msg1,msg2,RST,"\n");
+    fflush(stdout);
+}
 void print_status(int port,char* status){
-    printf(GREEN"\t%10d%5s%s%s", port, msg,RST,"\n");
+    static int first=1;
+    if( first ){
+        printf("%18s\n","Port statuses");
+        printf("%18s\n","-------------");
+        printf(" %-15s%7s\n","port", "status");
+        first = 0;
+    }
+    printf(GREEN"%-15d%6s%s%s", port, status,RST,"\n");
     fflush(stdout);
 }
 Interrupter intterupter;

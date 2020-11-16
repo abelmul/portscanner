@@ -90,7 +90,7 @@ void * receive_ack( void *ptr ) {
     int sock_raw = args->sd;
 
     if (sock_raw < 0) {
-        print_err("socket creation failed. " + strerror(errno));
+        print_err2("socket creation failed. ", strerror(errno));
         goto FREE_MALLOC;
     }
 
@@ -138,7 +138,7 @@ void* receive_rst(void* ptr) {
     int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 
     if (sock_raw < 0) {
-        print_err("socket creation failed" + strerror(errno));
+        print_err2("socket creation failed", strerror(errno));
         goto FREE_MALLOC;
     }
 
@@ -204,7 +204,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
 
         if (setsockopt (sockfd, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
         {
-            print_err("Fatal error setting IP_HDRINCL " + strerror(errno));
+            print_err2("Fatal error setting IP_HDRINCL ", strerror(errno));
             exit(1);
         }
     }
@@ -215,11 +215,11 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
         args.sd = sd;
         initInt(&intterupter,sd,5);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
-            print_err("Fatal can't create reciever thread" + strerror(errno));
+            print_err2("Fatal can't create reciever thread" , strerror(errno));
             exit(1);
         }
         if( pthread_create(&int_thread, NULL, intterupter.stopListening,(void*)&intterupter) < 0 ){
-            print_err("Fatal can't create intterupting thread " + strerror(errno));
+            print_err2("Fatal can't create intterupting thread " , strerror(errno));
             exit(1);
         }
         pthread_detach(int_thread);
@@ -241,7 +241,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
 
         if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
         {
-            print_err("error sending syn packet " + strerror(errno));
+            print_err2("error sending syn packet " , strerror(errno));
             continue;
         }
     }
@@ -286,14 +286,14 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
         if (setsockopt (sockfd, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
         {
-            print_err("Fatal error setting IP_HDRINCL, " + strerror(errno));
+            print_err2("Fatal error setting IP_HDRINCL, " , strerror(errno));
             exit(1);
         }
     }
 
     {
         if(pthread_create(&receiver_thread, NULL, receive_rst, (void*)servaddr) < 0) {
-            print_err("Fatal can't create reciever thread, " + strerror(errno));
+            print_err2("Fatal can't create reciever thread, " , strerror(errno));
         }
     }
 
@@ -313,7 +313,7 @@ int fin_scan(struct sockaddr_in* servaddr) {
 
         if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
         {
-            print_err("error sending syn packet " + strerror(errno));
+            print_err2("error sending syn packet " , strerror(errno));
             continue;
         }
     }
@@ -330,7 +330,7 @@ int is_tcp_port_open(struct sockaddr_in* servaddr) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd == -1) {
-        print(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
         return 0;
     }
 
@@ -368,12 +368,12 @@ int is_udp_port_open(struct sockaddr_in* servaddr) {
     return 0;
 }
 
-int main(int argv, char** args) {
+int main(int argc, char** args) {
     struct sockaddr_in servaddr;
     struct addrinfo hints, *res;
 
-    if (argv < 2) {
-        printf("Usage:\n%s [target_ip]", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s [target_ip]\n", args[0]);
         return -1;
     }
 
