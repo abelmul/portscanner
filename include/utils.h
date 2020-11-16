@@ -91,12 +91,13 @@ unsigned short csum(unsigned short *ptr,int nbytes) {
     return(answer);
 }
 
-typedef struct 
+typedef struct  Interrupter
 {
     uint8_t done;
     int sd;
     int period;
     void* (*stopListening)(void*);
+    void (*reset)(struct Interrupter* ,int);
 }Interrupter;
 
 /**
@@ -104,12 +105,13 @@ typedef struct
  */
 void* stopListening(void* p){
     Interrupter* self = (Interrupter*)p;
-    sleep(self->period);
+    usleep(self->period * 1000);
     self->done = 1;
     shutdown(self->sd,SHUT_RDWR);
 }
-
-void initInt(Interrupter* intr,int sd, int period){
+void reset(Interrupter*  i,int sd){ i->done = 0; i->sd=sd;}
+void initInt(Interrupter* intr,int sd,int period){
+    intr->reset = reset;
     intr->sd = sd;
     intr->stopListening = stopListening;
     intr->done = 0;
@@ -146,15 +148,15 @@ void set_tcphdr(tcphdr_t* tcph,u_int16_t source_port,uint8_t syn){
     tcph->urg_ptr = 0;
 }
 
-void print_err(char* msg){
+void print_err(const char* msg){
     printf(RED"[Error] %s%s%s", msg,RST,"\n");
     fflush(stdout);
 }
-void print_err2(char* msg1,char* msg2){
+void print_err2(const char* msg1,const char* msg2){
     printf(RED"[Error] %s%s%s%s", msg1,msg2,RST,"\n");
     fflush(stdout);
 }
-void print_status(int port,char* status){
+void print_status(int port,const char* status){
     static int first=1;
     if( first ){
         printf("%17s\n","Port status");
@@ -165,7 +167,7 @@ void print_status(int port,char* status){
     printf(GREEN"%-15d%6s%s%s", port, status,RST,"\n");
     fflush(stdout);
 }
-void print_msg(char* msg){
+void print_msg(const char* msg){
     printf(GREEN"[PortScanner]"RST);
     printf(" %s\n",msg);
     fflush(stdout);
@@ -180,7 +182,7 @@ void print_usage(){
     printf("[target_ip] is the ip address of the target machine to carry out the scan on.\n");
 }
 
-enum scan_type get_type(char* opt){
+enum scan_type get_type(const char* opt){
     if( !strcmp(opt, "-sT") )
         return TCP_SCAN;
     

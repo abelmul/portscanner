@@ -54,7 +54,7 @@ void syn_ack_scan(struct sockaddr_in* servaddr) {
         int sd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
         args.sd = sd;
         args.intterupter = &intterupter;
-        initInt(&intterupter,sd,2);
+        initInt(&intterupter,sd,2000);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
             print_err2("Fatal can't create reciever thread" , strerror(errno));
             exit(1);
