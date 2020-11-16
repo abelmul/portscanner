@@ -7,15 +7,87 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include <sys/types.h>
+#include <string.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
 
 
-#define RED "\033[38;2;200;100;100m "
-#define GREEN "\033[38;2;100;200;100m "
+#define RED "\033[38;2;200;100;100m"
+#define GREEN "\033[38;2;100;200;100m"
 #define RST "\033[0m"
 
 typedef struct iphdr iphdr_t;
 typedef struct tcphdr tcphdr_t;
 typedef struct sockaddr_in sockaddr_in_t;
+
+struct pseudo_header
+{
+    unsigned int source_address;
+    unsigned int dest_address;
+    unsigned char placeholder;
+    unsigned char protocol;
+    unsigned short tcp_length;
+
+    struct tcphdr tcp;
+};
+
+/**
+ * Get the public ip of this host
+ */
+void get_local_ip ( char * buffer) {
+    int sock = socket ( AF_INET, SOCK_DGRAM, 0);
+
+    const char* kGoogleDnsIp = "8.8.8.8";
+    int dns_port = 53;
+
+    struct sockaddr_in serv;
+
+    memset( &serv, 0, sizeof(serv) );
+    serv.sin_family = AF_INET;
+    serv.sin_addr.s_addr = inet_addr(kGoogleDnsIp);
+    serv.sin_port = htons( dns_port );
+
+    int err = connect( sock , (const struct sockaddr*) &serv , sizeof(serv) );
+
+    struct sockaddr_in name;
+    socklen_t namelen = sizeof(name);
+    err = getsockname(sock, (struct sockaddr*) &name, &namelen);
+
+    const char *p = inet_ntop(AF_INET, &name.sin_addr, buffer, 100);
+
+    close(sock);
+}
+
+
+/**
+ * Checksums - IP and TCP
+*/
+unsigned short csum(unsigned short *ptr,int nbytes) {
+    register long sum;
+    unsigned short oddbyte;
+    register short answer;
+
+    sum=0;
+    while(nbytes>1) {
+        sum+=*ptr++;
+        nbytes-=2;
+    }
+    if(nbytes==1) {
+        oddbyte=0;
+        *((u_char*)&oddbyte)=*(u_char*)ptr;
+        sum+=oddbyte;
+    }
+
+    sum = (sum>>16)+(sum & 0xffff);
+    sum = sum + (sum>>16);
+    answer=(short)~sum;
+
+    return(answer);
+}
+
 typedef struct 
 {
     uint8_t done;
@@ -85,6 +157,11 @@ void print_status(int port,char* status){
         first = 0;
     }
     printf(GREEN"%-15d%6s%s%s", port, status,RST,"\n");
+    fflush(stdout);
+}
+void print_msg(char* msg){
+    printf(GREEN"[PortScanner]"RST);
+    printf(" %s\n",msg);
     fflush(stdout);
 }
 Interrupter intterupter;
