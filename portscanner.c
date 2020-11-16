@@ -27,6 +27,7 @@ int main(int argc, char** args) {
     }
     else if (getaddrinfo (args[2], NULL, &hints, &res) == 0) {
         servaddr = *(struct sockaddr_in*)res->ai_addr;
+        printf("Resolved %s to %s\n", args[2], inet_ntoa(servaddr.sin_addr));
     }
     else {
         print_err("Provided ip or hostname is invalid.");

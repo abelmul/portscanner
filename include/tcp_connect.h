@@ -18,7 +18,7 @@ void tcp_cnct_scan(struct sockaddr_in* servaddr) {
         sl.l_onoff = 1;
         sl.l_linger = 0;
         setsockopt(sockfd, SOL_SOCKET, SO_LINGER | SO_REUSEADDR, &sl, sizeof(sl));
-        
+
         if( bind( sockfd, (struct sockaddr *)&addr,sizeof(addr)) ){
             close(sockfd);
             print_err2("Bind failed!",strerror(errno));
@@ -26,6 +26,14 @@ void tcp_cnct_scan(struct sockaddr_in* servaddr) {
         }
         if (sockfd == -1) {
             printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+            exit(-1);
+        }
+
+        Interrupter intr;
+        initInt(&intr, sockfd, 100);
+        pthread_t th;
+        if(pthread_create(&th, NULL, intr.stopListening, (void*)&intr) != 0) {
+            print_err2("Failed to create intre thread, ", strerror(errno));
             exit(-1);
         }
 
