@@ -4,7 +4,7 @@
 
 void* receive_rst(void* ptr);
 
-int fin_scan(struct sockaddr_in* servaddr) {
+void fin_scan(struct sockaddr_in* servaddr) {
     print_msg("Doing a FIN scan.");
     int source_port = 43591;
     char source_ip[20];
@@ -18,7 +18,7 @@ int fin_scan(struct sockaddr_in* servaddr) {
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (sockfd == -1) {
         printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
-        return 0;
+        exit(-1);
     }
 
     get_local_ip(source_ip);
@@ -68,13 +68,8 @@ int fin_scan(struct sockaddr_in* servaddr) {
             continue;
         }
     }
-
     close(sockfd);
-
-
     pthread_join(receiver_thread , NULL);
-
-    return 1;
 }
 /**
  * wait for a RST message.

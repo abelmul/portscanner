@@ -22,6 +22,9 @@
 typedef struct iphdr iphdr_t;
 typedef struct tcphdr tcphdr_t;
 typedef struct sockaddr_in sockaddr_in_t;
+typedef void (*scanner)(sockaddr_in_t *);
+
+enum scan_type { TCP_SCAN, UDP_SCAN, SYN_SCAN, FIN_SCAN};
 
 struct pseudo_header
 {
@@ -96,6 +99,9 @@ typedef struct
     void* (*stopListening)(void*);
 }Interrupter;
 
+/**
+ * Shutdown a listening socket.
+ */
 void* stopListening(void* p){
     Interrupter* self = (Interrupter*)p;
     sleep(self->period);
@@ -151,8 +157,8 @@ void print_err2(char* msg1,char* msg2){
 void print_status(int port,char* status){
     static int first=1;
     if( first ){
-        printf("%18s\n","Port statuses");
-        printf("%18s\n","-------------");
+        printf("%17s\n","Port status");
+        printf("%17s\n","-----------");
         printf(" %-15s%7s\n","port", "status");
         first = 0;
     }
@@ -164,5 +170,35 @@ void print_msg(char* msg){
     printf(" %s\n",msg);
     fflush(stdout);
 }
+void print_usage(){
+    print_msg("Usage: ./prtsc [options] [target_ip]");
+    printf("\noptions: -sT|-sU|-sS|-sF\n");
+    printf("\t -sT : Do a TCP connect scan.\n");
+    printf("\t -sU : Do a UDP connect scan.\n");
+    printf("\t -sS : Do a SYN scan.\n");
+    printf("\t -sF : Do a FIN scan.\n");
+    printf("[target_ip] is the ip address of the target machine to carry out the scan on.\n");
+}
+
+enum scan_type get_type(char* opt){
+    if( !strcmp(opt, "-sT") )
+        return TCP_SCAN;
+    
+    else if (!strcmp(opt, "-sU"))
+        return UDP_SCAN;
+
+    else if(!strcmp(opt, "-sS"))
+        return SYN_SCAN;
+
+    else if( !strcmp(opt, "-sF"))
+        return FIN_SCAN;
+
+    else{
+        print_err2("Unrecognized option ",opt);
+        print_usage();
+        exit(-1);
+    }
+}
+
 Interrupter intterupter;
 #endif

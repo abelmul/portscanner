@@ -5,11 +5,12 @@
 #include "udp_connect.h"
 
 int main(int argc, char** args) {
+    scanner scanners[4] = {tcp_cnct_scan, udp_cnct_scan,syn_ack_scan,fin_scan};
     struct sockaddr_in servaddr;
     struct addrinfo hints, *res;
 
-    if (argc < 2) {
-        printf("Usage: %s [target_ip]\n", args[0]);
+    if (argc != 3) {
+        print_usage();
         return -1;
     }
 
@@ -20,11 +21,11 @@ int main(int argc, char** args) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags |= AI_CANONNAME;
 
-    if (inet_addr(args[1]) != -1) {
+    if (inet_addr(args[2]) != -1) {
         servaddr.sin_family = AF_INET;
-        servaddr.sin_addr.s_addr = inet_addr(args[1]);
+        servaddr.sin_addr.s_addr = inet_addr(args[2]);
     }
-    else if (getaddrinfo (args[1], NULL, &hints, &res) == 0) {
+    else if (getaddrinfo (args[2], NULL, &hints, &res) == 0) {
         servaddr = *(struct sockaddr_in*)res->ai_addr;
     }
     else {
@@ -32,7 +33,9 @@ int main(int argc, char** args) {
         return 1;
     }
 
-    tcp_cnct_scan(&servaddr);
+    //Call the corresponding scanner.
+    scanners[ get_type(args[1]) ](&servaddr);
+
     return 0;
 }
 

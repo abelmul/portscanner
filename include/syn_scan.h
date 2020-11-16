@@ -9,7 +9,7 @@ struct syn_ack_args
 
 void * receive_ack( void *ptr );
 
-int syn_ack_scan(struct sockaddr_in* servaddr) {
+void syn_ack_scan(struct sockaddr_in* servaddr) {
     print_msg("Doing a SYN scan.");
     int source_port = 43591;
     char source_ip[20];
@@ -23,7 +23,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sockfd == -1) {
         printf(RED"[Error] tcp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
-        return 0;
+        exit(-1);
     }
 
     get_local_ip(source_ip);
@@ -50,7 +50,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
         args.addr =  servaddr;
         int sd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
         args.sd = sd;
-        initInt(&intterupter,sd,5);
+        initInt(&intterupter,sd,2);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
             print_err2("Fatal can't create reciever thread" , strerror(errno));
             exit(1);
@@ -84,11 +84,7 @@ int syn_ack_scan(struct sockaddr_in* servaddr) {
     }
 
     close(sockfd);
-
-
     pthread_join(receiver_thread , NULL);
-
-    return 1;
 }
 
 /**
