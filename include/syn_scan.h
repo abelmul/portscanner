@@ -5,6 +5,7 @@ struct syn_ack_args
 {
     struct sockaddr_in* addr;
     int sd;
+    Interrupter* intterupter;
 };
 
 void * receive_ack( void *ptr );
@@ -52,6 +53,7 @@ void syn_ack_scan(struct sockaddr_in* servaddr) {
         args.addr =  servaddr;
         int sd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
         args.sd = sd;
+        args.intterupter = &intterupter;
         initInt(&intterupter,sd,2);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
             print_err2("Fatal can't create reciever thread" , strerror(errno));
@@ -111,9 +113,9 @@ void * receive_ack( void *ptr ) {
         goto FREE_MALLOC;
     }
 
-    while(!intterupter.done) {
+    while(!args->intterupter->done) {
         data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
-        if( intterupter.done ) break;
+        if( args->intterupter->done ) break;
         if(data_size < 0 )
         {
             print_err("Recvfrom error , failed to get packets.");
