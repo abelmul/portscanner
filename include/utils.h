@@ -1,7 +1,7 @@
 #ifndef UTILS_PSC_H
 #define UTILS_PSC_H
 
-#include "pthread.h"
+#include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -13,6 +13,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
+
+#include "set.h"
 
 
 #define RED "\033[38;2;200;100;100m"

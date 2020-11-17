@@ -114,10 +114,11 @@ void* receive_rst(void* ptr) {
     Interrupter intr;
     initInt(&intr,sock_raw,5000);
     pthread_t th;
-    if( pthread_create( & th, NULL, intr.stopListening, (void*)&intr) != 0){
+    if( pthread_create( &th, NULL, intr.stopListening, (void*)&intr) != 0){
         print_err2("Failed to create intre thread, ", strerror(errno));
         exit(-1);
     }
+    pthread_detach(th);
     while(!intr.done) {
         data_size = recvfrom(sock_raw , buffer , 65536 , 0 , &saddr , &saddr_size);
         if( intr.done) break;

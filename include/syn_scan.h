@@ -104,6 +104,8 @@ void * receive_ack( void *ptr ) {
     struct sockaddr saddr;
     struct sockaddr_in source;
 
+    struct set port_set = new_set();
+
     unsigned char* buffer = (unsigned char*)malloc(65536);
     int data_size, saddr_size = sizeof(saddr);
     int sock_raw = args->sd;
@@ -132,15 +134,20 @@ void * receive_ack( void *ptr ) {
 
             if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
             {
-                print_status(ntohs(tcph_r->source),"open");
+                store(&port_set, ntohs(tcph_r->source));
             }
         }
     }
 
+    for(int i = 1; i < 65536; ++i) {
+        if (port_set.array[i] == 1)
+            print_status(i,"open");
+    }
 
 
     close(sock_raw);
 FREE_MALLOC:
+    destroy(&port_set);
     free(buffer);
 }
 #endif

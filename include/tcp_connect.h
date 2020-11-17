@@ -6,11 +6,14 @@
  */
 void tcp_cnct_scan(struct sockaddr_in* servaddr) {
     print_msg("Doing a TCP Connect Scan.");
+
     struct sockaddr_in addr;
+    struct set port_set = new_set();
+
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY; 
     addr.sin_port = htons( 43592 ); 
-    int opt=1;
+
     for(int i = 1; i < 65536; ++i){
         servaddr->sin_port   = htons(i);
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,13 +40,23 @@ void tcp_cnct_scan(struct sockaddr_in* servaddr) {
             exit(-1);
         }
 
+        pthread_detach(th);
+
         if (connect(sockfd, (struct sockaddr*)servaddr, sizeof(*servaddr)) == 0){
-            print_status(i,"open");
+            store(&port_set, i);
             if (shutdown(sockfd, SHUT_RDWR) != 0)
                 perror("shutdown");
         }
         close(sockfd);
     }
+
+
+    for(int i = 1; i < 65536; ++i) {
+        if (port_set.array[i] == 1)
+            print_status(i,"open");
+    }
+
+    destroy(&port_set);
 }
 
 #endif
