@@ -186,7 +186,12 @@ enum scan_type get_type(const char* opt){
     if( !strcmp(opt, "-sT") )
         return TCP_SCAN;
     
-    else if (!strcmp(opt, "-sU"))
+    if (getuid() != 0) {
+        print_err("You must be superuser to perform this action");
+        exit(1);
+    }
+
+    if (!strcmp(opt, "-sU"))
         return UDP_SCAN;
 
     else if(!strcmp(opt, "-sS"))
