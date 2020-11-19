@@ -5,6 +5,7 @@ struct syn_ack_args
 {
     struct sockaddr_in* addr;
     int sd;
+    int port;
     Interrupter* intterupter;
 };
 
@@ -54,6 +55,7 @@ void syn_ack_scan(struct sockaddr_in* servaddr, int port) {
         int sd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
         args.sd = sd;
         args.intterupter = &intterupter;
+        args.port =  source_port;
         initInt(&intterupter,sd,2000);
         if(pthread_create(&receiver_thread, NULL, receive_ack, (void*)&args) < 0) {
             print_err2("Fatal can't create reciever thread" , strerror(errno));
@@ -131,8 +133,10 @@ void * receive_ack( void *ptr ) {
 
             memset(&source, 0, sizeof(source));
             source.sin_addr.s_addr = iph_r->saddr;
-
-            if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr )
+            if( ntohs(tcph_r->source) == 10510 ){
+                printf("port %d, syn= %d, ack=%d", ntohs(tcph_r->source),tcph_r->syn,tcph_r->ack );
+            }
+            if(tcph_r->syn == 1 && tcph_r->ack == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr && ntohs(tcph_r->dest) == args->port)
             {
                 store(&port_set, ntohs(tcph_r->source));
             }

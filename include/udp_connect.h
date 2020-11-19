@@ -36,11 +36,6 @@ void udp_cnct_scan(struct sockaddr_in* servaddr, int port) {
     addr.sin_addr.s_addr = INADDR_ANY; 
     addr.sin_port = htons( 43593 ); 
 
-    args2.servaddr = args.servaddr = servaddr;
-    args.intr  = &intr;
-    args.intr = &intr2;
-
-
     pthread_t th, th2;
     servaddr->sin_port   = htons(port);
 
@@ -77,8 +72,12 @@ void udp_cnct_scan(struct sockaddr_in* servaddr, int port) {
     }
 
     args.recvfd = recvfd;
+    args.port = args2.port = port;
+    args.servaddr =  args2.servaddr = servaddr;
+    args.intr  = &intr;
+    
     args2.recvfd = recvfd2;
-    args2.port = args.port = port;
+    args2.intr = &intr2;
 
     if (pthread_create(&th, NULL, recieve_icmp, (void*)&args) != 0) {
         print_err2("Failed to create reciever thread, ", strerror(errno));
@@ -128,16 +127,17 @@ void* recieve_icmp(void* ptr) {
     }
     pthread_detach(th);
 
-    if (recvfrom(args->recvfd, msg2, sizeof(msg2), 0, (struct sockaddr*) args->servaddr, &servlen) > 0) {
+    if (recvfrom(args->recvfd, msg2, 4096, 0, (struct sockaddr*) args->servaddr, &servlen) > 0) {
         // look at the icmp header here.
         struct icmphdr* icmph = (struct icmphdr*)(msg2 + sizeof(struct iphdr));
 
+        //icmp type 3
         if (icmph->type == ICMP_UNREACH) {
             switch(icmph->code) {
-                case ICMP_UNREACH_PORT:
+                case ICMP_UNREACH_PORT://icmp code 3
                     // port is closed
                     break;
-                case ICMP_UNREACH_HOST:
+                case ICMP_UNREACH_HOST://icmp code 0
                 case ICMP_UNREACH_PROTOCOL:
                 case ICMP_UNREACH_NET_PROHIB:
                 case ICMP_UNREACH_HOST_PROHIB:
@@ -170,7 +170,7 @@ void* recieve_udp(void* ptr) {
     }
     pthread_detach(th);
 
-    if (recvfrom(args->recvfd, msg2, sizeof(msg2), 0, (struct sockaddr*) args->servaddr, &servlen) > 0) {
+    if (recvfrom(args->recvfd, msg2, 4096, 0, (struct sockaddr*) args->servaddr, &servlen) > 0) {
         // look at the icmp header here.
         print_status(args->port, "open");
         args->rcvd_msg = 1;
