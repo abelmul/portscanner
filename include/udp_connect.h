@@ -18,10 +18,16 @@ void* recieve_udp(void* ptr);
 /**
  * Do a UDP port scan.
  */
-void udp_cnct_scan(struct sockaddr_in* servaddr) {
+void udp_cnct_scan(struct sockaddr_in* servaddr, int port) {
     print_msg("Doing a UPD Connect Scan.");
-    char msg[] = "\xff\xffport scanner\x5f\x5f";
 
+    if( port == -1 ){
+        print_err("Please specify the udp port to scan.");
+        print_usage();
+        exit(-1);
+    }
+
+    char msg[] = "\xff\xffport scanner\x5f\x5f";
     Interrupter intr,intr2;
     struct udp_args args, args2;
 
@@ -35,77 +41,75 @@ void udp_cnct_scan(struct sockaddr_in* servaddr) {
     args.intr = &intr2;
 
 
-    for(int i = 1; i < 65536; ++i){
-        pthread_t th, th2;
-        servaddr->sin_port   = htons(i);
+    pthread_t th, th2;
+    servaddr->sin_port   = htons(port);
 
-        int opt = 1;
-        int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-        int recvfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-        int recvfd2 = socket(AF_INET, SOCK_DGRAM, 0);
+    int opt = 1;
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int recvfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    int recvfd2 = socket(AF_INET, SOCK_DGRAM, 0);
 
-        if (sockfd == -1) {
-            printf(RED"[Error] udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
-            exit(-1);
-        }
+    if (sockfd == -1) {
+        printf(RED"[Error] udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        exit(-1);
+    }
 
-        if (recvfd == -1) {
-            printf(RED"[Error] icmp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
-            exit(-1);
-        }
+    if (recvfd == -1) {
+        printf(RED"[Error] icmp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        exit(-1);
+    }
 
-        if (recvfd2 == -1) {
-            printf(RED"[Error] udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
-            exit(-1);
-        }
-
-
-        setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-        setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-        setsockopt(recvfd2, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-        if ( bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) ||  bind(recvfd, (struct sockaddr *)&addr, sizeof(addr)) || bind(recvfd2, (struct sockaddr *)&addr, sizeof(addr))) {
-            print_err2("Bind failed!", strerror(errno));
-            close(recvfd);
-            close(sockfd);
-            continue;
-        }
-
-        args.recvfd = recvfd;
-        args2.recvfd = recvfd2;
-        args2.port = args.port = i;
-
-        if (pthread_create(&th, NULL, recieve_icmp, (void*)&args) != 0) {
-            print_err2("Failed to create reciever thread, ", strerror(errno));
-            exit(-1);
-        }
-
-        if (pthread_create(&th2, NULL, recieve_udp, (void*)&args2) != 0) {
-            print_err2("Failed to create reciever thread, ", strerror(errno));
-            exit(-1);
-        }
-
-        // send three times
-        if(sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr))  < 0) {
-            print_err2("Send failed ", strerror(errno));
-            close(recvfd);
-            close(sockfd);
-            continue;
-        }
-        sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr));
-        sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr));
+    if (recvfd2 == -1) {
+        printf(RED"[Error] udp socket creation failed... for port %d, %s\n", ntohs(servaddr->sin_port), strerror(errno));
+        exit(-1);
+    }
 
 
-        pthread_join(th, NULL);
-        pthread_join(th2, NULL);
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    setsockopt(recvfd2, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-        if (args.rcvd_msg == 0 && args2.rcvd_msg == 0) {
-            print_status(i, "open|filtered");
-        }
-
+    if ( bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) ||  bind(recvfd, (struct sockaddr *)&addr, sizeof(addr)) || bind(recvfd2, (struct sockaddr *)&addr, sizeof(addr))) {
+        print_err2("Bind failed!", strerror(errno));
         close(recvfd);
         close(sockfd);
+        return;
     }
+
+    args.recvfd = recvfd;
+    args2.recvfd = recvfd2;
+    args2.port = args.port = port;
+
+    if (pthread_create(&th, NULL, recieve_icmp, (void*)&args) != 0) {
+        print_err2("Failed to create reciever thread, ", strerror(errno));
+        exit(-1);
+    }
+
+    if (pthread_create(&th2, NULL, recieve_udp, (void*)&args2) != 0) {
+        print_err2("Failed to create reciever thread, ", strerror(errno));
+        exit(-1);
+    }
+
+    // send three times
+    if(sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr))  < 0) {
+        print_err2("Send failed ", strerror(errno));
+        close(recvfd);
+        close(sockfd);
+        return;
+    }
+    sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr));
+    sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)servaddr, sizeof(*servaddr));
+
+
+    pthread_join(th, NULL);
+    pthread_join(th2, NULL);
+
+    if (args.rcvd_msg == 0 && args2.rcvd_msg == 0) {
+        print_status(port, "open|filtered");
+    }
+
+    close(recvfd);
+    close(sockfd);
 }
 
 void* recieve_icmp(void* ptr) {
@@ -115,10 +119,10 @@ void* recieve_icmp(void* ptr) {
     struct udp_args* args = (struct udp_args*)ptr;
     pthread_t th;
 
-    Interrupter intr;
-    initInt(&intr,args->recvfd,500);
+    Interrupter* intr = args->intr;
+    initInt(intr,args->recvfd,500);
 
-    if(pthread_create(&th, NULL, intr.stopListening, (void*)&intr) != 0) {
+    if(pthread_create(&th, NULL, intr->stopListening, (void*)intr) != 0) {
         print_err2("Failed to create intre thread, ", strerror(errno));
         exit(-1);
     }

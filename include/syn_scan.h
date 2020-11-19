@@ -10,7 +10,7 @@ struct syn_ack_args
 
 void * receive_ack( void *ptr );
 
-void syn_ack_scan(struct sockaddr_in* servaddr) {
+void syn_ack_scan(struct sockaddr_in* servaddr, int port) {
     print_msg("Doing a SYN scan.");
     
     Interrupter intterupter;

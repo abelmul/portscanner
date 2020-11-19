@@ -11,7 +11,7 @@ typedef struct fin_args
     int this_port;
 }fin_args;
 
-void fin_scan(struct sockaddr_in* servaddr) {
+void fin_scan(struct sockaddr_in* servaddr, int port) {
     print_msg("Doing a FIN scan.");
     int source_port = 43591;
     char source_ip[20];

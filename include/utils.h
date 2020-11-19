@@ -24,7 +24,7 @@
 typedef struct iphdr iphdr_t;
 typedef struct tcphdr tcphdr_t;
 typedef struct sockaddr_in sockaddr_in_t;
-typedef void (*scanner)(sockaddr_in_t *);
+typedef void (*scanner)(sockaddr_in_t *, int);
 
 enum scan_type { TCP_SCAN, UDP_SCAN, SYN_SCAN, FIN_SCAN};
 
@@ -181,6 +181,7 @@ void print_usage(){
     printf("\t -sU : Do a UDP connect scan.\n");
     printf("\t -sS : Do a SYN scan.\n");
     printf("\t -sF : Do a FIN scan.\n");
+    printf("\t -P 1-65535[optional]: choose port to be scanned.\n");
     printf("[target_ip] is the ip address of the target machine to carry out the scan on.\n");
 }
 

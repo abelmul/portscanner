@@ -4,7 +4,7 @@
 /**
  * Try to initiate a full TCP connection .
  */
-void tcp_cnct_scan(struct sockaddr_in* servaddr) {
+void tcp_cnct_scan(struct sockaddr_in* servaddr, int port) {
     print_msg("Doing a TCP Connect Scan.");
 
     struct sockaddr_in addr;
