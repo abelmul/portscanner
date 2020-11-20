@@ -67,8 +67,10 @@ void syn_ack_scan(struct sockaddr_in* servaddr, int port) {
         }
         pthread_detach(int_thread);
     }
+    int start = port == -1 ? 0 : port;
+    int end = port == -1 ? 65536 : port+1;
 
-    for(int i = 0;i < 65536; ++i) {
+    for(int i = start;i < end; ++i) {
         tcph->dest = htons(i);
         tcph->check = 0;
 

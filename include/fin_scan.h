@@ -56,34 +56,38 @@ void fin_scan(struct sockaddr_in* servaddr, int port) {
     if(pthread_create(&receiver_thread, NULL, receive_rst, (void*)&args) < 0) {
         print_err2("Fatal can't create reciever thread, " , strerror(errno));
     }
-
-   for (size_t i = 0; i < 3; i++)
-   {
-        for(int i = 0;i < 65536; ++i) {
-            tcph->dest = htons(i);
-            tcph->check = 0;
-
-            psh.source_address = iph->saddr;
-            psh.dest_address = servaddr->sin_addr.s_addr;
-            psh.placeholder = 0;
-            psh.protocol = IPPROTO_TCP;
-            psh.tcp_length = htons( sizeof(struct tcphdr) );
-
-            memcpy(&psh.tcp , tcph , sizeof (struct tcphdr));
-
-            tcph->check = csum( (unsigned short*) &psh , sizeof (struct pseudo_header));
-
-            if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
+    int start = port == -1 ? 0 : port;
+    int end = port == -1 ? 65536 : port+1;
+    for (size_t k = 0; k < 5000;k++)
+    {
+        for(int i = start;i < end; ++i) {
+            if( args.port_status[i] ) continue;
+            for (size_t j = 0; j <5; j++)
             {
-                print_err2("error sending syn packet " , strerror(errno));
-                continue;
-            }
+                tcph->dest = htons(i);
+                tcph->check = 0;
+
+                psh.source_address = iph->saddr;
+                psh.dest_address = servaddr->sin_addr.s_addr;
+                psh.placeholder = 0;
+                psh.protocol = IPPROTO_TCP;
+                psh.tcp_length = htons( sizeof(struct tcphdr) );
+
+                memcpy(&psh.tcp , tcph , sizeof (struct tcphdr));
+
+                tcph->check = csum( (unsigned short*) &psh , sizeof (struct pseudo_header));
+                if ( sendto (sockfd, datagram , sizeof(struct iphdr) + sizeof(struct tcphdr) , 0 , (struct sockaddr *)servaddr, sizeof(*servaddr)) < 0)
+                {
+                    print_err2("error sending fin packet " , strerror(errno));
+                    continue;
+                }
+            }   
         }
-   }
-   
+        if( k % 1000 == 0 ) sleep(1);
+    }
     close(sockfd);
     pthread_join(receiver_thread , NULL);
-    for (size_t i = 0; i < 65536; i++)
+    for (size_t i = start; i < end; i++)
     {
         if( args.port_status[i] == 0 )
             print_status(i, "open|filtered");
@@ -112,7 +116,7 @@ void* receive_rst(void* ptr) {
     }
     
     Interrupter intr;
-    initInt(&intr,sock_raw,5000);
+    initInt(&intr,sock_raw,20000);
     pthread_t th;
     if( pthread_create( &th, NULL, intr.stopListening, (void*)&intr) != 0){
         print_err2("Failed to create intre thread, ", strerror(errno));
@@ -136,8 +140,6 @@ void* receive_rst(void* ptr) {
             memset(&source, 0, sizeof(source));
             source.sin_addr.s_addr = iph_r->saddr;
 
-            // printf("Received from socket %d, %d , port = %d, dest_port = %d\n", tcph_r->syn, tcph_r->rst, ntohs(tcph_r->source),ntohs(tcph_r->dest));
-            // scanf("%d",&data_size);
             int dest_port = ntohs(tcph_r->dest);
             if(tcph_r->rst == 1 && source.sin_addr.s_addr == servaddr->sin_addr.s_addr && dest_port == args->this_port)
             {

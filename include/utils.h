@@ -107,7 +107,8 @@ typedef struct  Interrupter
  */
 void* stopListening(void* p){
     Interrupter* self = (Interrupter*)p;
-    usleep(self->period * 1000);
+    int a = usleep(self->period * 1000);
+    if( a ) return 0;
     self->done = 1;
     shutdown(self->sd,SHUT_RDWR);
 }
